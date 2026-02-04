@@ -1,0 +1,26 @@
+{
+  "name": "@natural-lang/cli",
+  "version": "0.1.0",
+  "description": "Command-line interface for Natural",
+  "main": "dist/index.js",
+  "bin": {
+    "natural": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Tests coming soon\"",
+    "lint": "echo \"Linting coming soon\""
+  },
+  "keywords": ["natural", "cli", "command-line"],
+  "author": "Offload <nev@offloadmy.work>",
+  "license": "MIT",
+  "dependencies": {
+    "@natural-lang/core": "^0.1.0",
+    "@natural-lang/compiler": "^0.1.0",
+    "commander": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
