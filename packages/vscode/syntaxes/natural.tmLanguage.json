@@ -1,0 +1,75 @@
+{
+  "name": "Natural",
+  "scopeName": "source.natural",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#concepts"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.natural",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.natural",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "concepts": {
+      "patterns": [
+        {
+          "name": "entity.name.type.concept.natural",
+          "match": "@[A-Z][a-zA-Z0-9_]*"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.natural",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.natural",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.natural",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.natural",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.natural",
+          "match": "\\b\\d+(\\.\\d+)?\\b"
+        }
+      ]
+    }
+  }
+}

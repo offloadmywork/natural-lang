@@ -1,0 +1,16 @@
+# Exclude everything from parent directories
+../../**
+
+# Exclude sibling packages
+../**
+!../LICENSE
+
+# Source files
+src/**
+*.ts
+tsconfig.json
+
+# Development
+.vscode/**
+.vscode-test/**
+node_modules/**

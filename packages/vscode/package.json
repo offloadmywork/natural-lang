@@ -1,0 +1,61 @@
+{
+  "name": "natural-lang",
+  "displayName": "Natural Language",
+  "description": "Language support for Natural (.nl) files",
+  "version": "0.1.0",
+  "publisher": "offloadmywork",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/offloadmywork/natural-lang"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:natural"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "natural",
+        "aliases": [
+          "Natural",
+          "natural"
+        ],
+        "extensions": [
+          ".nl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "natural",
+        "scopeName": "source.natural",
+        "path": "./syntaxes/natural.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "npm run build:extension && npm run build:server",
+    "build:extension": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "build:server": "esbuild ../lsp/src/server.ts --bundle --outfile=dist/server.js --platform=node --format=cjs --banner:js=\"#!/usr/bin/env node\"",
+    "dev": "npm run build -- --watch",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.19.11",
+    "typescript": "^5.3.3",
+    "@vscode/vsce": "^2.22.0"
+  }
+}
