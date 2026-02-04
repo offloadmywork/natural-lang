@@ -1,0 +1,21 @@
+{
+  "name": "@natural-lang/compiler",
+  "version": "0.1.0",
+  "description": "Agentic compiler for Natural (.nl → TypeScript)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Tests coming soon\"",
+    "lint": "echo \"Linting coming soon\""
+  },
+  "keywords": ["natural", "compiler", "codegen", "typescript"],
+  "author": "Offload <nev@offloadmy.work>",
+  "license": "MIT",
+  "dependencies": {
+    "@natural-lang/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

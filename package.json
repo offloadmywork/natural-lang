@@ -1,0 +1,36 @@
+{
+  "name": "natural-lang",
+  "version": "0.1.0",
+  "description": "Natural: a natural language programming language with agentic compilation",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "clean": "rm -rf packages/*/dist packages/*/node_modules"
+  },
+  "keywords": [
+    "natural-language",
+    "programming-language",
+    "agentic-compiler",
+    "lsp",
+    "typescript"
+  ],
+  "author": "Offload <nev@offloadmy.work>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/offloadmywork/natural-lang.git"
+  },
+  "bugs": {
+    "url": "https://github.com/offloadmywork/natural-lang/issues"
+  },
+  "homepage": "https://github.com/offloadmywork/natural-lang#readme",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

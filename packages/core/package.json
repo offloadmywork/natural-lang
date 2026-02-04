@@ -1,0 +1,19 @@
+{
+  "name": "@natural-lang/core",
+  "version": "0.1.0",
+  "description": "Parser and analysis engine for Natural programming language",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Tests coming soon\"",
+    "lint": "echo \"Linting coming soon\""
+  },
+  "keywords": ["natural", "parser", "ast", "analysis"],
+  "author": "Offload <nev@offloadmy.work>",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

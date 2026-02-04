@@ -1,0 +1,50 @@
+{
+  "name": "natural-lang-vscode",
+  "displayName": "Natural Language",
+  "description": "VSCode extension for the Natural programming language",
+  "version": "0.1.0",
+  "publisher": "offload",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Programming Languages"],
+  "keywords": ["natural", "natural-language", ".nl"],
+  "activationEvents": ["onLanguage:natural"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "natural",
+        "aliases": ["Natural", "natural"],
+        "extensions": [".nl"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "natural",
+        "scopeName": "source.natural",
+        "path": "./syntaxes/natural.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "dependencies": {
+    "@natural-lang/lsp": "^0.1.0",
+    "vscode-languageclient": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^2.19.0",
+    "typescript": "^5.0.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/offloadmywork/natural-lang.git"
+  }
+}
