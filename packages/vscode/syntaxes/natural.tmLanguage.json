@@ -6,13 +6,25 @@
       "include": "#comments"
     },
     {
-      "include": "#concepts"
+      "include": "#concept-definition"
+    },
+    {
+      "include": "#concept-reference"
     },
     {
       "include": "#strings"
     },
     {
       "include": "#numbers"
+    },
+    {
+      "include": "#urls"
+    },
+    {
+      "include": "#http-methods"
+    },
+    {
+      "include": "#prose"
     }
   ],
   "repository": {
@@ -23,19 +35,28 @@
           "match": "//.*$"
         },
         {
+          "name": "comment.line.number-sign.natural",
+          "match": "#.*$"
+        },
+        {
           "name": "comment.block.natural",
           "begin": "/\\*",
           "end": "\\*/"
         }
       ]
     },
-    "concepts": {
-      "patterns": [
-        {
-          "name": "entity.name.type.concept.natural",
-          "match": "@[A-Z][a-zA-Z0-9_]*"
+    "concept-definition": {
+      "name": "entity.name.type.concept.natural",
+      "match": "^@[A-Z][A-Za-z0-9_]*",
+      "captures": {
+        "0": {
+          "name": "keyword.control.concept.natural"
         }
-      ]
+      }
+    },
+    "concept-reference": {
+      "name": "variable.other.concept-ref.natural",
+      "match": "(?<!^)@[A-Z][A-Za-z0-9_]*\\b"
     },
     "strings": {
       "patterns": [
@@ -60,6 +81,11 @@
               "match": "\\\\."
             }
           ]
+        },
+        {
+          "name": "string.quoted.backtick.natural",
+          "begin": "`",
+          "end": "`"
         }
       ]
     },
@@ -70,6 +96,18 @@
           "match": "\\b\\d+(\\.\\d+)?\\b"
         }
       ]
+    },
+    "urls": {
+      "name": "markup.underline.link.natural",
+      "match": "https?://[^\\s]+"
+    },
+    "http-methods": {
+      "name": "keyword.other.http-method.natural",
+      "match": "\\b(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\\b"
+    },
+    "prose": {
+      "name": "text.natural",
+      "match": ".+"
     }
   }
 }

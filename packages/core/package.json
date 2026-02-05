@@ -1,14 +1,21 @@
 {
   "name": "@natural-lang/core",
   "version": "0.1.0",
+  "description": "Parser and analysis engine for Natural programming language",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch",
-    "test": "node dist/test.js"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
+  "keywords": ["natural", "parser", "ast", "analysis"],
+  "author": "Offload <nev@offloadmy.work>",
+  "license": "MIT",
   "devDependencies": {
-    "typescript": "^5.3.3"
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
   }
 }

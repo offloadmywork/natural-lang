@@ -1,176 +1,197 @@
-import { AST, Concept, Diagnostic, ParseResult, Position, Range, Section } from "./types.js";
+import { Lexer, Token, TokenType } from './lexer.js';
+import {
+  NaturalDocument,
+  ConceptDefinition,
+  ProseBlock,
+  ConceptReference,
+  Location,
+  Position,
+  Range,
+} from './types.js';
 
 export class Parser {
-  private text: string;
-  private lines: string[];
+  private tokens: Token[];
+  private current: number = 0;
+  private source: string;
 
-  constructor(text: string) {
-    this.text = text;
-    this.lines = text.split("\n");
+  constructor(source: string) {
+    this.source = source;
+    const lexer = new Lexer(source);
+    this.tokens = lexer.tokenize();
   }
 
-  parse(): ParseResult {
-    const ast = this.buildAST();
-    const diagnostics = this.generateDiagnostics(ast);
-    return { ast, diagnostics };
+  private peek(): Token {
+    return this.tokens[this.current];
   }
 
-  private buildAST(): AST {
-    const sections: Section[] = [];
-    let currentSection: string[] = [];
-    let sectionStartLine = 0;
-
-    for (let i = 0; i < this.lines.length; i++) {
-      const line = this.lines[i];
-      
-      // Empty line indicates section boundary
-      if (line.trim() === "") {
-        if (currentSection.length > 0) {
-          sections.push(this.createSection(currentSection, sectionStartLine));
-          currentSection = [];
-        }
-        sectionStartLine = i + 1;
-      } else {
-        currentSection.push(line);
-      }
+  private advance(): Token {
+    if (!this.isAtEnd()) {
+      this.current++;
     }
-
-    // Don't forget the last section
-    if (currentSection.length > 0) {
-      sections.push(this.createSection(currentSection, sectionStartLine));
-    }
-
-    return { sections };
+    return this.tokens[this.current - 1];
   }
 
-  private createSection(lines: string[], startLine: number): Section {
-    const text = lines.join("\n");
-    const endLine = startLine + lines.length - 1;
-    const endChar = lines[lines.length - 1].length;
+  private isAtEnd(): boolean {
+    return this.peek().type === TokenType.EOF;
+  }
 
-    const range: Range = {
-      start: { line: startLine, character: 0 },
-      end: { line: endLine, character: endChar },
+  private createLocation(start: Position, end: Position): Location {
+    return {
+      range: { start, end },
+      source: this.source,
     };
-
-    const concepts = this.extractConcepts(text, startLine);
-
-    return { text, range, concepts };
   }
 
-  private extractConcepts(text: string, startLine: number): Concept[] {
-    const concepts: Concept[] = [];
+  private findConceptReferences(text: string, startPos: Position): ConceptReference[] {
+    const references: ConceptReference[] = [];
     
-    // Match @ConceptName pattern
-    // Concept names must start with uppercase letter and can contain alphanumeric + underscores
-    const conceptRegex = /@([A-Z][a-zA-Z0-9_]*)/g;
-    
+    // Match @ConceptName patterns in text
+    const regex = /@([A-Z][A-Za-z0-9_]*)/g;
     let match;
-    while ((match = conceptRegex.exec(text)) !== null) {
+
+    while ((match = regex.exec(text)) !== null) {
       const conceptName = match[1];
-      const matchIndex = match.index;
-      
-      // Calculate line and character position
-      const textBeforeMatch = text.substring(0, matchIndex);
-      const linesBeforeMatch = textBeforeMatch.split("\n");
-      const lineOffset = linesBeforeMatch.length - 1;
-      const line = startLine + lineOffset;
-      const character = linesBeforeMatch[linesBeforeMatch.length - 1].length;
-      
-      // Determine if this is a definition or reference
-      // Definition: @ConceptName appears at start of line or after whitespace/punctuation
-      const textBefore = text.substring(Math.max(0, matchIndex - 20), matchIndex);
-      const isDefinition = this.isLikelyDefinition(textBefore, text.substring(matchIndex));
-      
-      const range: Range = {
-        start: { line, character },
-        end: { line, character: character + conceptName.length + 1 }, // +1 for @
+      const matchStart = match.index;
+      const matchEnd = matchStart + match[0].length;
+
+      // Calculate position (assuming single line for simplicity)
+      const refStart: Position = {
+        line: startPos.line,
+        column: startPos.column + matchStart,
+        offset: startPos.offset + matchStart,
       };
-      
-      concepts.push({
+
+      const refEnd: Position = {
+        line: startPos.line,
+        column: startPos.column + matchEnd,
+        offset: startPos.offset + matchEnd,
+      };
+
+      references.push({
+        type: 'ConceptReference',
         name: conceptName,
-        type: isDefinition ? "definition" : "reference",
-        position: range,
+        location: this.createLocation(refStart, refEnd),
       });
     }
-    
-    return concepts;
+
+    return references;
   }
 
-  private isLikelyDefinition(textBefore: string, textAt: string): boolean {
-    // Heuristic: if @Concept is at the beginning of a section or after "is", "are", "means", etc.
-    // it's likely a definition
-    const definitionKeywords = /\b(is|are|means|defines?|represents?|refers? to)\s*$/i;
-    
-    // Check if at start of section (only whitespace before)
-    if (textBefore.trim() === "" || textBefore.match(/^\s*$/)) {
-      return true;
+  private parseProse(): ProseBlock[] {
+    const proseBlocks: ProseBlock[] = [];
+    let currentText = '';
+    let proseStart: Position | null = null;
+    let proseEnd: Position | null = null;
+
+    // Collect all text and newlines until next concept or EOF
+    while (!this.isAtEnd()) {
+      const token = this.peek();
+
+      if (token.type === TokenType.ConceptDefinition) {
+        break;
+      }
+
+      if (token.type === TokenType.Text) {
+        if (proseStart === null) {
+          proseStart = token.start;
+        }
+        currentText += token.value;
+        proseEnd = token.end;
+        this.advance();
+      } else if (token.type === TokenType.Newline) {
+        if (proseStart === null) {
+          proseStart = token.start;
+        }
+        currentText += '\n';
+        proseEnd = token.end;
+        this.advance();
+      } else {
+        this.advance();
+      }
     }
-    
-    // Check for definition keywords
-    if (definitionKeywords.test(textBefore)) {
-      return true;
+
+    // Create prose block if we have content
+    if (currentText.trim().length > 0 && proseStart && proseEnd) {
+      const references = this.findConceptReferences(currentText, proseStart);
+      proseBlocks.push({
+        type: 'ProseBlock',
+        text: currentText.trim(),
+        references,
+        location: this.createLocation(proseStart, proseEnd),
+      });
     }
-    
-    return false;
+
+    return proseBlocks;
   }
 
-  private generateDiagnostics(ast: AST): Diagnostic[] {
-    const diagnostics: Diagnostic[] = [];
-    const definitions = new Map<string, Range>();
-    const references = new Map<string, Range[]>();
+  private parseConcept(): ConceptDefinition | null {
+    const token = this.peek();
 
-    // Collect all definitions and references
-    for (const section of ast.sections) {
-      // Check for empty sections
-      if (section.text.trim() === "") {
-        diagnostics.push({
-          range: section.range,
-          message: "Empty section",
-          severity: "info",
-        });
+    if (token.type !== TokenType.ConceptDefinition) {
+      return null;
+    }
+
+    const conceptToken = this.advance();
+    const conceptName = conceptToken.value;
+    const start = conceptToken.start;
+
+    // Skip newline after concept definition
+    if (this.peek().type === TokenType.Newline) {
+      this.advance();
+    }
+
+    // Parse prose until next concept or EOF
+    const prose = this.parseProse();
+
+    const end = prose.length > 0 
+      ? prose[prose.length - 1].location.range.end 
+      : conceptToken.end;
+
+    return {
+      type: 'ConceptDefinition',
+      name: conceptName,
+      prose,
+      location: this.createLocation(start, end),
+    };
+  }
+
+  public parse(): NaturalDocument {
+    const concepts: ConceptDefinition[] = [];
+    const startPos: Position = { line: 1, column: 1, offset: 0 };
+
+    while (!this.isAtEnd()) {
+      // Skip leading newlines
+      while (this.peek().type === TokenType.Newline) {
+        this.advance();
       }
 
-      for (const concept of section.concepts) {
-        if (concept.type === "definition") {
-          if (definitions.has(concept.name)) {
-            // Duplicate definition
-            diagnostics.push({
-              range: concept.position,
-              message: `Duplicate definition of concept '${concept.name}'`,
-              severity: "warning",
-            });
-          } else {
-            definitions.set(concept.name, concept.position);
-          }
-        } else {
-          // Collect references
-          if (!references.has(concept.name)) {
-            references.set(concept.name, []);
-          }
-          references.get(concept.name)!.push(concept.position);
-        }
+      if (this.isAtEnd()) {
+        break;
+      }
+
+      const concept = this.parseConcept();
+      if (concept) {
+        concepts.push(concept);
+      } else {
+        // Skip unexpected tokens
+        this.advance();
       }
     }
 
-    // Check for undefined references
-    for (const [conceptName, ranges] of references.entries()) {
-      if (!definitions.has(conceptName)) {
-        for (const range of ranges) {
-          diagnostics.push({
-            range,
-            message: `Undefined concept reference '${conceptName}'`,
-            severity: "error",
-          });
-        }
-      }
-    }
+    const endPos = this.tokens[this.tokens.length - 1]?.end || startPos;
 
-    return diagnostics;
+    return {
+      type: 'NaturalDocument',
+      concepts,
+      location: this.createLocation(startPos, endPos),
+    };
   }
 }
 
-export function parse(text: string): ParseResult {
-  const parser = new Parser(text);
+/**
+ * Parse Natural Language source code into an AST
+ */
+export function parse(source: string): NaturalDocument {
+  const parser = new Parser(source);
   return parser.parse();
 }

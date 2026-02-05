@@ -1,0 +1,35 @@
+{
+  "New Concept": {
+    "prefix": "@",
+    "body": [
+      "@${1:ConceptName}",
+      "${2:Describe what this concept represents and how it behaves.}",
+      "$0"
+    ],
+    "description": "Create a new concept definition"
+  },
+  "API Endpoint": {
+    "prefix": "api",
+    "body": [
+      "${1|GET,POST,PUT,PATCH,DELETE|} /${2:path} — ${3:description}",
+      "$0"
+    ],
+    "description": "Define an API endpoint"
+  },
+  "Validation Rule": {
+    "prefix": "validate",
+    "body": [
+      "${1:Field} must ${2:be valid/match pattern/be between}.",
+      "$0"
+    ],
+    "description": "Add a validation rule"
+  },
+  "Error Handling": {
+    "prefix": "error",
+    "body": [
+      "If ${1:condition}, return ${2:error/status code} with message \"${3:error message}\".",
+      "$0"
+    ],
+    "description": "Define error handling"
+  }
+}
