@@ -1,274 +1,282 @@
 /**
- * Step 4: Generate code for each file in the plan
+ * Code Generator - Generate TypeScript code from analyzed entities and routes
+ * Uses templates and simple string concatenation
+ * 
+ * TODO: Use LLM for more sophisticated code generation in v0.2
  */
 
-import type { Analysis, FilePlan, GeneratedFile } from './types.js';
-import type { LLMClient } from './llm.js';
+import type { EntityInfo, RouteInfo, AnalysisResult } from './types.js';
 
-export class Generator {
-  constructor(private llm: LLMClient) {}
+export function generateTypeScriptInterfaces(entities: Map<string, EntityInfo>): string {
+  let code = '// Generated TypeScript interfaces\n';
+  code += '// TODO: This is template-based. Future versions will use LLM for better code generation.\n\n';
 
-  async generate(plan: FilePlan[], analysis: Analysis): Promise<GeneratedFile[]> {
-    const files: GeneratedFile[] = [];
-
-    for (const filePlan of plan) {
-      console.log(`  Generating ${filePlan.path}...`);
-      
-      try {
-        const content = await this.generateFile(filePlan, analysis, plan);
-        files.push({
-          path: filePlan.path,
-          content,
-        });
-      } catch (error) {
-        console.error(`  ❌ Failed to generate ${filePlan.path}:`, error);
-        throw error;
-      }
-    }
-
-    return files;
+  for (const [name, entity] of entities) {
+    code += generateInterface(name, entity);
+    code += '\n';
   }
 
-  private async generateFile(
-    filePlan: FilePlan,
-    analysis: Analysis,
-    allPlans: FilePlan[]
-  ): Promise<string> {
-    // For config files, use templates instead of LLM
-    if (filePlan.type === 'config' || filePlan.type === 'entry') {
-      return this.generateConfigFile(filePlan, analysis);
-    }
+  return code;
+}
 
-    const prompt = this.buildGenerationPrompt(filePlan, analysis, allPlans);
-    const systemPrompt = `You are an expert TypeScript and React developer.
-Generate production-quality code based on the specification.
-Return ONLY the code, no markdown code blocks, no explanations.
-Use modern best practices: TypeScript, React hooks, Zustand for state, Zod for validation.`;
+function generateInterface(name: string, entity: EntityInfo): string {
+  let code = `/**\n * ${name}\n`;
+  
+  if (entity.properties.length > 0) {
+    code += ` * Properties: ${entity.properties.map(p => p.name).join(', ')}\n`;
+  }
+  
+  code += ` */\n`;
+  code += `export interface ${name} {\n`;
 
-    const response = await this.llm.complete(prompt, systemPrompt);
-    
-    // Clean up response (remove markdown code blocks if present)
-    let code = response.trim();
-    const codeBlockMatch = code.match(/```(?:typescript|tsx|ts|javascript|jsx|js)?\s*\n([\s\S]*?)\n```/);
-    if (codeBlockMatch) {
-      code = codeBlockMatch[1];
-    }
-    
-    return code;
+  for (const prop of entity.properties) {
+    const optional = prop.required ? '' : '?';
+    code += `  /** ${prop.description || prop.name} */\n`;
+    code += `  ${prop.name}${optional}: ${prop.type};\n`;
   }
 
-  private buildGenerationPrompt(
-    filePlan: FilePlan,
-    analysis: Analysis,
-    allPlans: FilePlan[]
-  ): string {
-    const context = this.buildContext(analysis);
-    
-    return `Generate the file: ${filePlan.path}
+  code += '}\n';
 
-Purpose: ${filePlan.purpose}
+  return code;
+}
 
-Context from analysis:
-${context}
+export function generateZodSchemas(entities: Map<string, EntityInfo>): string {
+  let code = '// Generated Zod validation schemas\n';
+  code += '// TODO: Template-based validation. Future versions will use LLM for comprehensive validation.\n\n';
+  code += `import { z } from 'zod';\n\n`;
 
-Dependencies: ${filePlan.dependencies.length > 0 ? filePlan.dependencies.join(', ') : 'none'}
-
-Requirements:
-- Use TypeScript with proper types
-- Follow modern best practices
-- Include proper imports
-- Add helpful comments
-- Handle errors gracefully
-${filePlan.path.endsWith('.tsx') ? '- Use React hooks and functional components' : ''}
-${filePlan.path.includes('/types/') ? '- Export TypeScript interface and Zod schema' : ''}
-${filePlan.path.includes('/hooks/') ? '- Export a custom React hook' : ''}
-${filePlan.path.includes('/store/') ? '- Use Zustand for state management' : ''}
-
-Generate complete, production-ready code for this file.`;
+  for (const [name, entity] of entities) {
+    code += generateZodSchema(name, entity);
+    code += '\n';
   }
 
-  private buildContext(analysis: Analysis): string {
-    let context = '';
-    
-    if (analysis.dataModels.length > 0) {
-      context += 'Data Models:\n';
-      for (const model of analysis.dataModels) {
-        context += `- ${model.name}: ${model.fields.map(f => `${f.name} (${f.type}${f.required ? ', required' : ''})`).join(', ')}\n`;
-      }
-      context += '\n';
-    }
-    
-    if (analysis.behaviors.length > 0) {
-      context += 'Behaviors:\n';
-      for (const behavior of analysis.behaviors) {
-        context += `- ${behavior.name}: ${behavior.description}\n`;
-      }
-      context += '\n';
-    }
-    
-    if (analysis.uiComponents.length > 0) {
-      context += 'UI Components:\n';
-      for (const component of analysis.uiComponents) {
-        context += `- ${component.name} (${component.type}): ${component.description}\n`;
-      }
-      context += '\n';
-    }
-    
-    if (analysis.businessRules.length > 0) {
-      context += 'Business Rules:\n';
-      for (const rule of analysis.businessRules) {
-        context += `- ${rule.context}: ${rule.rule}\n`;
-      }
-      context += '\n';
-    }
-    
-    return context;
-  }
+  return code;
+}
 
-  private generateConfigFile(filePlan: FilePlan, analysis: Analysis): string {
-    const fileName = filePlan.path.split('/').pop() || '';
+function generateZodSchema(name: string, entity: EntityInfo): string {
+  let code = `export const ${name}Schema = z.object({\n`;
+
+  for (const prop of entity.properties) {
+    let zodType = 'z.string()';
     
-    switch (fileName) {
-      case 'package.json':
-        return this.generatePackageJson(analysis);
-      case 'tsconfig.json':
-        return this.generateTsConfig();
-      case 'vite.config.ts':
-        return this.generateViteConfig();
-      case 'index.html':
-        return this.generateIndexHtml();
-      case 'tailwind.config.js':
-        return this.generateTailwindConfig();
-      case 'postcss.config.js':
-        return this.generatePostcssConfig();
-      case 'index.css':
-        return this.generateIndexCss();
+    switch (prop.type) {
+      case 'string':
+        zodType = 'z.string()';
+        break;
+      case 'number':
+        zodType = 'z.number()';
+        break;
+      case 'boolean':
+        zodType = 'z.boolean()';
+        break;
+      case 'Date':
+        zodType = 'z.date()';
+        break;
+      case 'string[]':
+        zodType = 'z.array(z.string())';
+        break;
       default:
-        return `// ${filePlan.purpose}\n`;
+        zodType = 'z.string()';
     }
+
+    // Apply validations
+    for (const validation of entity.validations) {
+      if (validation.field === prop.name) {
+        if (validation.rule === 'length' && validation.constraint) {
+          const [min, max] = validation.constraint.split('-').map(Number);
+          zodType = `z.string().min(${min}).max(${max})`;
+        }
+      }
+    }
+
+    if (!prop.required) {
+      zodType += '.optional()';
+    }
+
+    code += `  ${prop.name}: ${zodType},\n`;
   }
 
-  private generatePackageJson(analysis: Analysis): string {
-    return JSON.stringify({
-      name: 'natural-app',
-      version: '0.1.0',
-      type: 'module',
-      scripts: {
-        dev: 'vite',
-        build: 'tsc && vite build',
-        preview: 'vite preview',
-      },
-      dependencies: {
-        react: '^18.2.0',
-        'react-dom': '^18.2.0',
-        zustand: '^4.4.0',
-        zod: '^3.22.0',
-      },
-      devDependencies: {
-        '@types/react': '^18.2.0',
-        '@types/react-dom': '^18.2.0',
-        '@vitejs/plugin-react': '^4.2.0',
-        autoprefixer: '^10.4.0',
-        postcss: '^8.4.0',
-        tailwindcss: '^3.4.0',
-        typescript: '^5.3.0',
-        vite: '^5.0.0',
-      },
-    }, null, 2);
-  }
+  code += '});\n';
+  code += `\nexport type ${name} = z.infer<typeof ${name}Schema>;\n`;
 
-  private generateTsConfig(): string {
-    return JSON.stringify({
-      compilerOptions: {
-        target: 'ES2020',
-        useDefineForClassFields: true,
-        lib: ['ES2020', 'DOM', 'DOM.Iterable'],
-        module: 'ESNext',
-        skipLibCheck: true,
-        moduleResolution: 'bundler',
-        allowImportingTsExtensions: true,
-        resolveJsonModule: true,
-        isolatedModules: true,
-        noEmit: true,
-        jsx: 'react-jsx',
-        strict: true,
-        noUnusedLocals: true,
-        noUnusedParameters: true,
-        noFallthroughCasesInSwitch: true,
-      },
-      include: ['src'],
-      references: [{ path: './tsconfig.node.json' }],
-    }, null, 2);
-  }
-
-  private generateViteConfig(): string {
-    return `import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-export default defineConfig({
-  plugins: [react()],
-})
-`;
-  }
-
-  private generateIndexHtml(): string {
-    return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Natural App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-`;
-  }
-
-  private generateTailwindConfig(): string {
-    return `/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
-`;
-  }
-
-  private generatePostcssConfig(): string {
-    return `export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
-`;
-  }
-
-  private generateIndexCss(): string {
-    return `@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-`;
-  }
+  return code;
 }
 
-export function createGenerator(llm: LLMClient): Generator {
-  return new Generator(llm);
+export function generateExpressRoutes(routes: RouteInfo[], entities: Map<string, EntityInfo>): string {
+  let code = '// Generated Express routes\n';
+  code += '// TODO: Template-based routes. Future versions will use LLM for complete API implementation.\n\n';
+  code += `import express, { Request, Response } from 'express';\n`;
+  code += `const router = express.Router();\n\n`;
+  code += `// TODO: Implement data store (currently just in-memory Map)\n`;
+  code += `const dataStore = new Map<string, any>();\n\n`;
+
+  for (const route of routes) {
+    code += generateRoute(route);
+    code += '\n';
+  }
+
+  code += `export default router;\n`;
+
+  return code;
+}
+
+function generateRoute(route: RouteInfo): string {
+  const method = route.method.toLowerCase();
+  const handlerName = `${method}${route.path.replace(/\//g, '_').replace(/:/g, '')}`;
+  
+  let code = `// ${route.description}\n`;
+  code += `router.${method}('${route.path}', async (req: Request, res: Response) => {\n`;
+  code += `  try {\n`;
+  code += `    // TODO: Implement ${route.description}\n`;
+  
+  if (route.method === 'GET' && route.path.includes(':id')) {
+    code += `    const id = req.params.id;\n`;
+    code += `    const item = dataStore.get(id);\n`;
+    code += `    if (!item) {\n`;
+    code += `      return res.status(404).json({ error: 'Not found' });\n`;
+    code += `    }\n`;
+    code += `    res.json(item);\n`;
+  } else if (route.method === 'GET') {
+    code += `    const items = Array.from(dataStore.values());\n`;
+    code += `    res.json(items);\n`;
+  } else if (route.method === 'POST') {
+    code += `    const data = req.body;\n`;
+    code += `    const id = Math.random().toString(36).substr(2, 9);\n`;
+    code += `    dataStore.set(id, { id, ...data });\n`;
+    code += `    res.status(201).json({ id, ...data });\n`;
+  } else if (route.method === 'PUT' || route.method === 'PATCH') {
+    code += `    const id = req.params.id;\n`;
+    code += `    const existing = dataStore.get(id);\n`;
+    code += `    if (!existing) {\n`;
+    code += `      return res.status(404).json({ error: 'Not found' });\n`;
+    code += `    }\n`;
+    code += `    const updated = { ...existing, ...req.body };\n`;
+    code += `    dataStore.set(id, updated);\n`;
+    code += `    res.json(updated);\n`;
+  } else if (route.method === 'DELETE') {
+    code += `    const id = req.params.id;\n`;
+    code += `    if (!dataStore.has(id)) {\n`;
+    code += `      return res.status(404).json({ error: 'Not found' });\n`;
+    code += `    }\n`;
+    code += `    dataStore.delete(id);\n`;
+    code += `    res.status(204).send();\n`;
+  }
+  
+  code += `  } catch (error) {\n`;
+  code += `    console.error('Error:', error);\n`;
+  code += `    res.status(500).json({ error: 'Internal server error' });\n`;
+  code += `  }\n`;
+  code += `});\n`;
+
+  return code;
+}
+
+export function generatePackageJson(projectName: string): string {
+  const pkg = {
+    name: projectName,
+    version: '0.1.0',
+    description: 'Generated from Natural language specification',
+    main: 'dist/index.js',
+    scripts: {
+      build: 'tsc',
+      dev: 'tsx watch src/index.ts',
+      start: 'node dist/index.js',
+    },
+    dependencies: {
+      express: '^4.18.0',
+      zod: '^3.22.0',
+    },
+    devDependencies: {
+      '@types/express': '^4.17.0',
+      '@types/node': '^20.0.0',
+      typescript: '^5.0.0',
+      tsx: '^4.0.0',
+    },
+  };
+
+  return JSON.stringify(pkg, null, 2);
+}
+
+export function generateTsConfig(): string {
+  const config = {
+    compilerOptions: {
+      target: 'ES2020',
+      module: 'NodeNext',
+      moduleResolution: 'NodeNext',
+      lib: ['ES2020'],
+      outDir: './dist',
+      rootDir: './src',
+      strict: true,
+      esModuleInterop: true,
+      skipLibCheck: true,
+      forceConsistentCasingInFileNames: true,
+      resolveJsonModule: true,
+    },
+    include: ['src/**/*'],
+    exclude: ['node_modules', 'dist'],
+  };
+
+  return JSON.stringify(config, null, 2);
+}
+
+export function generateMainFile(): string {
+  return `// Generated Express server
+// TODO: Template-based server. Future versions will use LLM for complete implementation.
+
+import express from 'express';
+import router from './routes.js';
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.use(express.json());
+app.use('/api', router);
+
+app.get('/', (req, res) => {
+  res.json({ message: 'API is running. See /api for endpoints.' });
+});
+
+app.listen(port, () => {
+  console.log(\`Server running on http://localhost:\${port}\`);
+});
+`;
+}
+
+export function generateReadme(projectName: string): string {
+  return `# ${projectName}
+
+Generated from Natural language specification (.nl file).
+
+## Setup
+
+\`\`\`bash
+npm install
+\`\`\`
+
+## Development
+
+\`\`\`bash
+npm run dev
+\`\`\`
+
+## Build
+
+\`\`\`bash
+npm run build
+npm start
+\`\`\`
+
+## Notes
+
+This is a template-based generation from Natural v0.1.
+Future versions will use LLM-powered compilation for more sophisticated implementations.
+
+Generated types and validation schemas are in the src/ directory.
+API routes are defined in src/routes.ts.
+
+---
+
+Generated by Natural Language Compiler
+https://github.com/offloadmywork/natural-lang
+`;
 }

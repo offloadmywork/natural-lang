@@ -1,9 +1,10 @@
 {
   "name": "@natural-lang/compiler",
   "version": "0.1.0",
-  "description": "Agentic compiler for Natural (.nl → TypeScript)",
+  "description": "Template-based compiler for Natural (.nl → TypeScript)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "scripts": {
     "build": "tsc",
     "test": "echo \"Tests coming soon\"",

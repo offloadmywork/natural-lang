@@ -1,83 +1,52 @@
 /**
- * Type definitions for the compiler pipeline
+ * Type definitions for the compiler
  */
 
-export interface ParseResult {
-  concepts: Concept[];
-}
-
-export interface Concept {
-  name: string;
-  content: string;
-}
-
-export interface Analysis {
-  dataModels: DataModel[];
-  behaviors: Behavior[];
-  uiComponents: UIComponent[];
-  businessRules: BusinessRule[];
-  apiEndpoints?: APIEndpoint[];
-  storage?: string;
-}
-
-export interface DataModel {
-  name: string;
-  fields: Field[];
-}
-
-export interface Field {
-  name: string;
-  type: string;
-  required: boolean;
-  validation?: string;
-}
-
-export interface Behavior {
-  name: string;
-  description: string;
-  inputs: string[];
-  outputs: string[];
-}
-
-export interface UIComponent {
-  name: string;
-  type: string;
-  description: string;
-  interactions: string[];
-}
-
-export interface BusinessRule {
-  context: string;
-  rule: string;
-}
-
-export interface APIEndpoint {
-  method: string;
-  path: string;
-  description: string;
-}
-
-export interface FilePlan {
-  path: string;
-  purpose: string;
-  dependencies: string[];
-  type: 'config' | 'entry' | 'model' | 'logic' | 'component';
-}
-
-export interface GeneratedFile {
-  path: string;
-  content: string;
-}
+import type { NaturalDocument, Diagnostic } from '@natural-lang/core';
 
 export interface CompileOptions {
-  model?: string;
-  outputDir: string;
-  verbose?: boolean;
+  target?: 'typescript';
 }
 
 export interface CompileResult {
-  success: boolean;
-  outputDir: string;
-  files: string[];
-  errors?: string[];
+  files: Map<string, string>;
+  diagnostics: Diagnostic[];
+}
+
+export interface PropertyInfo {
+  name: string;
+  type: string;
+  required: boolean;
+  description?: string;
+}
+
+export interface MethodInfo {
+  name: string;
+  description: string;
+}
+
+export interface ValidationInfo {
+  field: string;
+  rule: string;
+  constraint?: string;
+}
+
+export interface EntityInfo {
+  name: string;
+  properties: PropertyInfo[];
+  methods: MethodInfo[];
+  validations: ValidationInfo[];
+}
+
+export interface RouteInfo {
+  method: string;
+  path: string;
+  description: string;
+  statusCode?: number;
+}
+
+export interface AnalysisResult {
+  entities: Map<string, EntityInfo>;
+  routes: RouteInfo[];
+  validations: Map<string, ValidationInfo[]>;
 }
