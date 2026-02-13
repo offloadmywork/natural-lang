@@ -1,12 +1,12 @@
 /**
  * @natural-lang/compiler
- * Template-based code generator for Natural language (.nl → TypeScript)
+ * Agentic AI-powered code generator for Natural language (.nl → TypeScript)
  * 
- * v0.1: Uses heuristics and templates (no LLM)
- * TODO: v0.2 will use agentic/LLM-powered compilation for better accuracy
+ * v0.2: Uses LLM for intelligent code generation with template fallback
  */
 
 export { compile } from './compiler.js';
+export { getLLMConfig } from './llm.js';
 export type {
   CompileOptions,
   CompileResult,
@@ -16,3 +16,4 @@ export type {
   RouteInfo,
   ValidationInfo,
 } from './types.js';
+export type { LLMConfig } from './llm.js';

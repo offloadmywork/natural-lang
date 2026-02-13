@@ -170,7 +170,7 @@ function commandCheck(args: string[]): void {
   }
 }
 
-function commandBuild(args: string[]): void {
+async function commandBuild(args: string[]): Promise<void> {
   const filePath = args[0];
   let outputDir = 'output';
 
@@ -200,7 +200,7 @@ function commandBuild(args: string[]): void {
 
   try {
     const source = fs.readFileSync(resolvedPath, 'utf-8');
-    const result = compile(source);
+    const result = await compile(source);
 
     // Check for errors
     const errors = result.diagnostics.filter(d => d.severity === 'error');
@@ -260,7 +260,7 @@ function commandBuild(args: string[]): void {
   }
 }
 
-function commandExplain(args: string[]): void {
+async function commandExplain(args: string[]): Promise<void> {
   const filePath = args[0];
 
   if (!filePath) {
@@ -322,7 +322,7 @@ function commandExplain(args: string[]): void {
     console.log(colorize('yellow', 'Future versions will use LLM for deeper understanding.\n'));
 
     // Compile to see what it generates
-    const result = compile(source);
+    const result = await compile(source);
     
     console.log(colorize('cyan', `Generated files (${result.files.size}):`));
     for (const [filePath, _] of result.files) {
@@ -363,21 +363,23 @@ if (!command || command === 'help' || command === '--help' || command === '-h') 
   process.exit(0);
 }
 
-switch (command) {
-  case 'init':
-    commandInit(args.slice(1));
-    break;
-  case 'check':
-    commandCheck(args.slice(1));
-    break;
-  case 'build':
-    commandBuild(args.slice(1));
-    break;
-  case 'explain':
-    commandExplain(args.slice(1));
-    break;
-  default:
-    console.error(colorize('red', `Unknown command: ${command}\n`));
-    printHelp();
-    process.exit(1);
-}
+(async () => {
+  switch (command) {
+    case 'init':
+      commandInit(args.slice(1));
+      break;
+    case 'check':
+      commandCheck(args.slice(1));
+      break;
+    case 'build':
+      await commandBuild(args.slice(1));
+      break;
+    case 'explain':
+      await commandExplain(args.slice(1));
+      break;
+    default:
+      console.error(colorize('red', `Unknown command: ${command}\n`));
+      printHelp();
+      process.exit(1);
+  }
+})();
