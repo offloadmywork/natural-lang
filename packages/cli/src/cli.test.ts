@@ -84,7 +84,7 @@ A user can create tasks.
     const result = runCLI(['check', nlFile], testDir);
     
     expect(result.stdout).toContain('Checking test.nl');
-    expect(result.stdout).toContain('Found 2 concept(s)');
+    expect(result.stdout).toContain('Found 2 concepts');
     expect(result.stdout).toContain('@Task');
     expect(result.stdout).toContain('@User');
     expect(result.status).toBe(0);

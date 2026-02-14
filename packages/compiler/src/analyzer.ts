@@ -13,6 +13,15 @@ export function analyze(doc: NaturalDocument): AnalysisResult {
   const routes: RouteInfo[] = [];
   const validations = new Map<string, ValidationInfo[]>();
 
+  // First pass: collect all entity names for type inference
+  const entityNames = new Set<string>();
+  for (const concept of doc.concepts) {
+    if (!isAPIDefinition(concept.name)) {
+      entityNames.add(concept.name);
+    }
+  }
+
+  // Second pass: extract entities with knowledge of all entity names
   for (const concept of doc.concepts) {
     // Check if this is an API definition
     if (isAPIDefinition(concept.name)) {
@@ -22,7 +31,7 @@ export function analyze(doc: NaturalDocument): AnalysisResult {
     }
 
     // Otherwise, treat as entity definition
-    const entity = extractEntity(concept);
+    const entity = extractEntity(concept, entityNames);
     entities.set(entity.name, entity);
     
     if (entity.validations.length > 0) {
@@ -37,7 +46,7 @@ function isAPIDefinition(name: string): boolean {
   return /API|Endpoint|Route/i.test(name);
 }
 
-function extractEntity(concept: ConceptDefinition): EntityInfo {
+function extractEntity(concept: ConceptDefinition, entityNames: Set<string>): EntityInfo {
   const properties: PropertyInfo[] = [];
   const methods: MethodInfo[] = [];
   const validationRules: ValidationInfo[] = [];
@@ -46,7 +55,7 @@ function extractEntity(concept: ConceptDefinition): EntityInfo {
     const text = prose.text.trim();
     
     // Extract properties: "has a/an X", "contains Y", "includes Z"
-    const propMatches = extractProperties(text);
+    const propMatches = extractProperties(text, entityNames);
     properties.push(...propMatches);
 
     // Extract validations: "must be", "required", "cannot be", etc.
@@ -66,7 +75,7 @@ function extractEntity(concept: ConceptDefinition): EntityInfo {
   };
 }
 
-function extractProperties(text: string): PropertyInfo[] {
+function extractProperties(text: string, entityNames: Set<string>): PropertyInfo[] {
   const properties: PropertyInfo[] = [];
   
   // Pattern: "has a/an X, Y, and Z"
@@ -82,7 +91,7 @@ function extractProperties(text: string): PropertyInfo[] {
     for (const part of parts) {
       if (!part || part.length < 2) continue;
       
-      const prop = parseProperty(part, text);
+      const prop = parseProperty(part, text, entityNames);
       if (prop) {
         properties.push(prop);
       }
@@ -92,31 +101,111 @@ function extractProperties(text: string): PropertyInfo[] {
   return properties;
 }
 
-function parseProperty(propText: string, context: string): PropertyInfo | null {
+/**
+ * Convert a plural word to its singular form (simple heuristics)
+ */
+function toSingular(word: string): string {
+  const lower = word.toLowerCase();
+  
+  // Common irregular plurals
+  const irregulars: Record<string, string> = {
+    'children': 'child',
+    'people': 'person',
+    'men': 'man',
+    'women': 'woman',
+    'mice': 'mouse',
+    'geese': 'goose',
+    'teeth': 'tooth',
+    'feet': 'foot',
+    'data': 'datum',
+    'indices': 'index',
+    'vertices': 'vertex',
+    'matrices': 'matrix',
+  };
+  
+  if (irregulars[lower]) {
+    // Preserve original casing of first letter
+    const singular = irregulars[lower];
+    return word[0] === word[0].toUpperCase() 
+      ? singular.charAt(0).toUpperCase() + singular.slice(1)
+      : singular;
+  }
+  
+  // Words ending in -ies → -y (e.g., categories → category)
+  if (lower.endsWith('ies') && lower.length > 4) {
+    return word.slice(0, -3) + 'y';
+  }
+  
+  // Words ending in -es (e.g., boxes → box, statuses → status)
+  if (lower.endsWith('ses') || lower.endsWith('xes') || lower.endsWith('zes') ||
+      lower.endsWith('ches') || lower.endsWith('shes')) {
+    return word.slice(0, -2);
+  }
+  
+  // Words ending in -s (e.g., users → user)
+  if (lower.endsWith('s') && !lower.endsWith('ss') && lower.length > 2) {
+    return word.slice(0, -1);
+  }
+  
+  return word;
+}
+
+/**
+ * Check if a word matches an entity name (case-insensitive)
+ */
+function findMatchingEntity(word: string, entityNames: Set<string>): string | null {
+  const lower = word.toLowerCase();
+  for (const entity of entityNames) {
+    if (entity.toLowerCase() === lower) {
+      return entity;
+    }
+  }
+  return null;
+}
+
+function parseProperty(propText: string, context: string, entityNames: Set<string>): PropertyInfo | null {
   // Remove leading articles
   let name = propText.replace(/^(?:a|an|the)\s+/i, '').trim();
   
   // Skip if it's not a valid property name
   if (name.length === 0 || name.length > 100) return null;
 
+  // Extract the core word (first word, for type inference)
+  const words = name.split(/\s+/);
+  const coreWord = words[words.length - 1]; // Use last word (e.g., "parent category" → "category")
+
   // Convert to camelCase
   name = toCamelCase(name);
 
   // Infer type from keywords
-  // TODO: Use LLM for accurate type inference
   let type = 'string';
-  const lower = propText.toLowerCase();
   
-  if (/\b(?:id|identifier)\b/i.test(propText)) {
-    type = 'string';
-  } else if (/\b(?:status|state)\b/i.test(propText)) {
-    type = 'boolean';
-  } else if (/\b(?:count|number|quantity|amount)\b/i.test(propText)) {
-    type = 'number';
-  } else if (/\b(?:date|time|timestamp)\b/i.test(propText)) {
-    type = 'Date';
-  } else if (/\b(?:list|array|collection)\b/i.test(propText)) {
-    type = 'string[]';
+  // First, check if the property references a known entity
+  // Check exact match (singular entity reference)
+  const exactMatch = findMatchingEntity(coreWord, entityNames);
+  if (exactMatch) {
+    type = exactMatch;
+  } else {
+    // Check if it's a plural of an entity (e.g., "tags" → Tag[])
+    const singular = toSingular(coreWord);
+    const singularMatch = findMatchingEntity(singular, entityNames);
+    if (singularMatch && singular.toLowerCase() !== coreWord.toLowerCase()) {
+      // It's a plural form → array type
+      type = `${singularMatch}[]`;
+    } else {
+      // Fall back to keyword-based inference
+      if (/\b(?:id|identifier)\b/i.test(propText)) {
+        type = 'string';
+      } else if (/\b(?:status|state)\b/i.test(propText)) {
+        type = 'boolean';
+      } else if (/\b(?:count|number|quantity|amount|price|total)\b/i.test(propText)) {
+        type = 'number';
+      } else if (/\b(?:date|time|timestamp)\b/i.test(propText)) {
+        type = 'Date';
+      } else if (/\b(?:list|array|collection)\b/i.test(propText)) {
+        type = 'string[]';
+      }
+    }
   }
 
   // Check if required
