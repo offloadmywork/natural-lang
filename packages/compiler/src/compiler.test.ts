@@ -213,4 +213,46 @@ GET /api/test — test endpoint
     // Should mention how to run
     expect(readmeContent).toContain('npm');
   });
+
+  it('should infer array types from plural entity references', async () => {
+    const source = `@Task
+A task has a title and completion status.
+
+@TaskList
+A task list contains multiple tasks.
+Tasks can be filtered by status.
+`;
+
+    const result = await compile(source);
+
+    const typesContent = result.files.get('src/types.ts')!;
+    
+    // TaskList should have a tasks property typed as Task[]
+    expect(typesContent).toContain('interface Task');
+    expect(typesContent).toContain('interface TaskList');
+    
+    // The plural "tasks" should be inferred as Task[] not string
+    expect(typesContent).toContain('Task[]');
+  });
+
+  it('should infer singular entity references as entity types', async () => {
+    const source = `@User
+A user has a name and email.
+
+@Comment
+A comment has content and an author.
+The author is the user who wrote it.
+
+@Category
+A category has a name and optional parent category.
+`;
+
+    const result = await compile(source);
+
+    const typesContent = result.files.get('src/types.ts')!;
+    
+    // Category should reference itself for parent
+    expect(typesContent).toContain('interface Category');
+    expect(typesContent).toMatch(/category\??: Category/i);
+  });
 });
