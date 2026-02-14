@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build -w @natural-lang/core && npm run build -w @natural-lang/compiler && npm run build -w @natural-lang/cli && npm run build -w @natural-lang/lsp && npm run build -w natural-lang",
     "dev": "npm run dev --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
   },
