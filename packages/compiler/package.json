@@ -7,8 +7,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Tests coming soon\"",
-    "lint": "echo \"Linting coming soon\""
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": ["natural", "compiler", "codegen", "typescript"],
   "author": "Offload <nev@offloadmy.work>",
@@ -17,6 +17,8 @@
     "@natural-lang/core": "^0.1.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.18"
   }
 }
